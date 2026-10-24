@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from typing import List
+from urllib.parse import urlsplit
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -192,27 +193,43 @@ CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "Lax")
 SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "False").lower() in ("true", "1")
 CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "False").lower() in ("true", "1")
 
+def _clean_origin(raw: str) -> str:
+    """Normalize origin string to scheme://netloc without trailing slashes or paths."""
+    trimmed = raw.strip()
+    if not trimmed:
+        return ""
+    if not trimmed.startswith("http://") and not trimmed.startswith("https://"):
+        trimmed = f"https://{trimmed}"
+    parsed = urlsplit(trimmed)
+    if parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+    return trimmed.rstrip("/")
+
+
 # CORS Configuration
 CORS_ALLOW_CREDENTIALS = True
+
+default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://pdf-document-platform.vercel.app",
+]
+
 cors_origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
 if cors_origins_env:
-    CORS_ALLOWED_ORIGINS = [
-        origin.strip() for origin in cors_origins_env.split(",") if origin.strip()
+    cleaned_cors = [
+        _clean_origin(origin) for origin in cors_origins_env.split(",") if _clean_origin(origin)
     ]
+    CORS_ALLOWED_ORIGINS = list(dict.fromkeys(cleaned_cors + default_origins))
 else:
-    CORS_ALLOWED_ORIGINS = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ]
+    CORS_ALLOWED_ORIGINS = default_origins
 
 # CSRF Trusted Origins (Required for cross-origin authentication from Vercel)
 csrf_origins_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 if csrf_origins_env:
-    CSRF_TRUSTED_ORIGINS = [
-        origin.strip() for origin in csrf_origins_env.split(",") if origin.strip()
+    cleaned_csrf = [
+        _clean_origin(origin) for origin in csrf_origins_env.split(",") if _clean_origin(origin)
     ]
+    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(cleaned_csrf + default_origins + ["https://*.onrender.com"]))
 else:
-    CSRF_TRUSTED_ORIGINS = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ]
+    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(default_origins + ["https://*.onrender.com"]))

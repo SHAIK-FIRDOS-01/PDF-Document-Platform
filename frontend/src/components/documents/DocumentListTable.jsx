@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getMediaUrl } from '../../utils/mediaUrl';
 import {
   FileText,
   ExternalLink,
@@ -172,7 +173,7 @@ export default function DocumentListTable({
                         {/* Download Document */}
                         {doc.file && (
                           <a
-                            href={doc.file}
+                            href={getMediaUrl(doc.file)}
                             download
                             target="_blank"
                             rel="noopener noreferrer"

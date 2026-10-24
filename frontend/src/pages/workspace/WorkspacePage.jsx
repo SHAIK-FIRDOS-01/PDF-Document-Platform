@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import PDFViewer from '../../components/viewer/PDFViewer';
+import { getMediaUrl } from '../../utils/mediaUrl';
 import {
   Search,
   BookOpen,
@@ -397,7 +398,7 @@ export default function WorkspacePage() {
           ) : currentDoc?.file ? (
             <div className="flex-1 flex flex-col overflow-hidden">
               <PDFViewer
-                fileUrl={currentDoc.file}
+                fileUrl={getMediaUrl(currentDoc.file)}
                 activePage={activePage}
                 onPageChange={(p) => setActivePage(p)}
                 boundingBoxes={activeBoundingBoxes}

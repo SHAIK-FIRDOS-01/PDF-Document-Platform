@@ -3,6 +3,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { Loader2, AlertCircle, FileSearch } from 'lucide-react';
 import ViewerControls from './ViewerControls';
 import BoundingBoxOverlay from './BoundingBoxOverlay';
+import { getMediaUrl } from '../../utils/mediaUrl';
 
 // Configure standard PDF.js worker
 if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
@@ -58,8 +59,9 @@ export default function PDFViewer({
     setRenderError(null);
     cancelInFlightRender();
 
+    const targetUrl = getMediaUrl(fileUrl);
     const loadingTask = pdfjsLib.getDocument({
-      url: fileUrl,
+      url: targetUrl,
       withCredentials: true,
     });
 

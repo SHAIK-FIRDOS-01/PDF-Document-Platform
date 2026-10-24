@@ -49,7 +49,9 @@ class DocumentUploadView(APIView):
                 parse_and_index_document(doc)
                 created_docs.append(doc)
 
-            response_data = DocumentDetailSerializer(created_docs, many=True).data
+            response_data = DocumentDetailSerializer(
+                created_docs, many=True, context={"request": request}
+            ).data
             return Response(response_data, status=status.HTTP_201_CREATED)
 
         serializer = DocumentUploadSerializer(
@@ -62,7 +64,9 @@ class DocumentUploadView(APIView):
         # Parse document structure and extract sections
         parse_and_index_document(document)
 
-        response_serializer = DocumentDetailSerializer(document)
+        response_serializer = DocumentDetailSerializer(
+            document, context={"request": request}
+        )
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 

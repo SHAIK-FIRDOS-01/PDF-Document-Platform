@@ -1,16 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { FileText, Lock, Mail, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, isAuthenticated, isLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate('/documents', { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +37,7 @@ export const RegisterPage = () => {
     setIsSubmitting(false);
 
     if (result.success) {
-      navigate('/documents');
+      navigate('/documents', { replace: true });
     } else {
       setLocalError(result.error || 'Registration failed.');
     }

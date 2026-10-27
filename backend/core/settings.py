@@ -167,7 +167,17 @@ REST_FRAMEWORK = {
     ),
 }
 
-# SimpleJWT Configuration with HttpOnly Cookie Rotation
+# SimpleJWT Configuration with HttpOnly Cookie Rotation & Bearer Token Support
+is_production = (
+    not DEBUG
+    or bool(DATABASE_URL)
+    or bool(os.getenv("RENDER"))
+    or os.getenv("JWT_COOKIE_SECURE", "False").lower() in ("true", "1")
+)
+
+JWT_COOKIE_SECURE = os.getenv("JWT_COOKIE_SECURE", "True" if is_production else "False").lower() in ("true", "1")
+JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "None" if is_production else "Lax")
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(
         minutes=int(os.getenv("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", "60"))
@@ -181,17 +191,17 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_COOKIE": "access_token",
     "AUTH_COOKIE_REFRESH": "refresh_token",
-    "AUTH_COOKIE_SECURE": os.getenv("JWT_COOKIE_SECURE", "False").lower() in ("true", "1"),
+    "AUTH_COOKIE_SECURE": JWT_COOKIE_SECURE,
     "AUTH_COOKIE_HTTP_ONLY": True,
     "AUTH_COOKIE_PATH": "/",
-    "AUTH_COOKIE_SAMESITE": os.getenv("JWT_COOKIE_SAMESITE", "Lax"),
+    "AUTH_COOKIE_SAMESITE": JWT_COOKIE_SAMESITE,
 }
 
 # Session & CSRF Cookie Settings
-SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
-CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "Lax")
-SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "False").lower() in ("true", "1")
-CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "False").lower() in ("true", "1")
+SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "None" if is_production else "Lax")
+CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "None" if is_production else "Lax")
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True" if is_production else "False").lower() in ("true", "1")
+CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "True" if is_production else "False").lower() in ("true", "1")
 
 def _clean_origin(raw: str) -> str:
     """Normalize origin string to scheme://netloc without trailing slashes or paths."""
@@ -224,12 +234,21 @@ if cors_origins_env:
 else:
     CORS_ALLOWED_ORIGINS = default_origins
 
+# Allow any Vercel preview or production deployment domain
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https:\/\/.*\.vercel\.app$",
+]
+
 # CSRF Trusted Origins (Required for cross-origin authentication from Vercel)
 csrf_origins_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 if csrf_origins_env:
     cleaned_csrf = [
         _clean_origin(origin) for origin in csrf_origins_env.split(",") if _clean_origin(origin)
     ]
-    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(cleaned_csrf + default_origins + ["https://*.onrender.com"]))
+    CSRF_TRUSTED_ORIGINS = list(
+        dict.fromkeys(cleaned_csrf + default_origins + ["https://*.vercel.app", "https://*.onrender.com"])
+    )
 else:
-    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(default_origins + ["https://*.onrender.com"]))
+    CSRF_TRUSTED_ORIGINS = list(
+        dict.fromkeys(default_origins + ["https://*.vercel.app", "https://*.onrender.com"])
+    )

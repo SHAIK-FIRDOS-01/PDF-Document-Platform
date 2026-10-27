@@ -32,11 +32,11 @@ def get_client_ip(request: Request) -> str:
 def _get_cookie_samesite() -> Literal["Lax", "Strict", "None"]:
     """Resolve strongly-typed samesite configuration from settings."""
     simple_jwt = getattr(settings, "SIMPLE_JWT", {})
-    val = str(simple_jwt.get("AUTH_COOKIE_SAMESITE", "Lax")).strip().capitalize()
-    return cast(
-        Literal["Lax", "Strict", "None"],
-        val if val in ("Lax", "Strict", "None") else "Lax",
-    )
+    val = str(simple_jwt.get("AUTH_COOKIE_SAMESITE", "Lax")).strip()
+    for option in ("Lax", "Strict", "None"):
+        if val.lower() == option.lower():
+            return cast(Literal["Lax", "Strict", "None"], option)
+    return "Lax"
 
 
 def set_jwt_cookies(
@@ -50,6 +50,10 @@ def set_jwt_cookies(
     cookie_samesite = _get_cookie_samesite()
     cookie_secure: bool = bool(simple_jwt.get("AUTH_COOKIE_SECURE", False))
     cookie_http_only: bool = bool(simple_jwt.get("AUTH_COOKIE_HTTP_ONLY", True))
+
+    # Modern browsers require Secure=True if SameSite=None
+    if cookie_samesite == "None":
+        cookie_secure = True
 
     access_name: str = str(simple_jwt.get("AUTH_COOKIE", "access_token"))
     refresh_name: str = str(simple_jwt.get("AUTH_COOKIE_REFRESH", "refresh_token"))
@@ -86,6 +90,9 @@ def clear_jwt_cookies(response: Response) -> Response:
     simple_jwt = getattr(settings, "SIMPLE_JWT", {})
     cookie_path: str = str(simple_jwt.get("AUTH_COOKIE_PATH", "/"))
     cookie_samesite = _get_cookie_samesite()
+    cookie_secure: bool = bool(simple_jwt.get("AUTH_COOKIE_SECURE", False))
+    if cookie_samesite == "None":
+        cookie_secure = True
 
     access_name: str = str(simple_jwt.get("AUTH_COOKIE", "access_token"))
     refresh_name: str = str(simple_jwt.get("AUTH_COOKIE_REFRESH", "refresh_token"))
@@ -98,7 +105,7 @@ def clear_jwt_cookies(response: Response) -> Response:
 class RegisterView(APIView):
     """
     POST /api/auth/register/
-    Accepts email and password, creates user, issues HttpOnly cookies.
+    Accepts email and password, creates user, issues HttpOnly cookies and returns tokens.
     """
     permission_classes = [AllowAny]
 
@@ -114,6 +121,12 @@ class RegisterView(APIView):
         response_data = {
             "message": "Registration successful",
             "user": UserSerializer(user).data,
+            "access": access_token,
+            "refresh": refresh_token,
+            "tokens": {
+                "access": access_token,
+                "refresh": refresh_token,
+            },
         }
         response = Response(response_data, status=status.HTTP_201_CREATED)
         return set_jwt_cookies(response, access_token, refresh_token)
@@ -122,7 +135,7 @@ class RegisterView(APIView):
 class LoginView(APIView):
     """
     POST /api/auth/login/
-    Validates credentials, sets HttpOnly cookies.
+    Validates credentials, sets HttpOnly cookies and returns tokens.
     """
     permission_classes = [AllowAny]
 
@@ -160,6 +173,12 @@ class LoginView(APIView):
         response_data = {
             "message": "Login successful",
             "user": UserSerializer(user).data,
+            "access": access_token,
+            "refresh": refresh_token,
+            "tokens": {
+                "access": access_token,
+                "refresh": refresh_token,
+            },
         }
         response = Response(response_data, status=status.HTTP_200_OK)
         return set_jwt_cookies(response, access_token, refresh_token)
@@ -168,17 +187,21 @@ class LoginView(APIView):
 class RefreshView(APIView):
     """
     POST /api/auth/refresh/
-    Reads refresh token from HttpOnly cookie, rotates tokens, blacklists old token.
+    Reads refresh token from HttpOnly cookie or request body, rotates tokens, blacklists old token.
     """
     permission_classes = [AllowAny]
 
     def post(self, request: Request) -> Response:
         simple_jwt = getattr(settings, "SIMPLE_JWT", {})
         refresh_name: str = str(simple_jwt.get("AUTH_COOKIE_REFRESH", "refresh_token"))
-        raw_refresh_token = request.COOKIES.get(refresh_name)
+        raw_refresh_token = (
+            request.COOKIES.get(refresh_name)
+            or request.data.get("refresh")
+            or request.data.get("refresh_token")
+        )
 
         if not raw_refresh_token:
-            raise AuthenticationFailed("Refresh token cookie missing.")
+            raise AuthenticationFailed("Refresh token missing.")
 
         try:
             old_refresh = RefreshToken(cast(Any, raw_refresh_token))
@@ -199,8 +222,17 @@ class RefreshView(APIView):
                 raise exc
             raise AuthenticationFailed(f"Invalid or blacklisted token: {exc}")
 
+        response_data = {
+            "message": "Token refreshed successfully",
+            "access": new_access_token,
+            "refresh": new_refresh_token,
+            "tokens": {
+                "access": new_access_token,
+                "refresh": new_refresh_token,
+            },
+        }
         response = Response(
-            {"message": "Token refreshed successfully"},
+            response_data,
             status=status.HTTP_200_OK,
         )
         return set_jwt_cookies(response, new_access_token, new_refresh_token)
@@ -216,7 +248,11 @@ class LogoutView(APIView):
     def post(self, request: Request) -> Response:
         simple_jwt = getattr(settings, "SIMPLE_JWT", {})
         refresh_name: str = str(simple_jwt.get("AUTH_COOKIE_REFRESH", "refresh_token"))
-        raw_refresh_token = request.COOKIES.get(refresh_name)
+        raw_refresh_token = (
+            request.COOKIES.get(refresh_name)
+            or request.data.get("refresh")
+            or request.data.get("refresh_token")
+        )
 
         if raw_refresh_token:
             try:

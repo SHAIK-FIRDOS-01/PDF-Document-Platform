@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { authApi, subscribeToAuthFailure } from '../services/api';
+import { authApi, subscribeToAuthFailure, clearStoredTokens } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -39,11 +39,13 @@ export const AuthProvider = ({ children }) => {
           setUser(userData);
           setIsAuthenticated(true);
         } else {
+          clearStoredTokens();
           setUser(null);
           setIsAuthenticated(false);
         }
       } catch (err) {
         // A 401 or network error on /api/auth/me/ during bootstrap cleanly indicates an unauthenticated session
+        clearStoredTokens();
         setUser(null);
         setIsAuthenticated(false);
       } finally {
@@ -61,6 +63,7 @@ export const AuthProvider = ({ children }) => {
 
     // Clear user session if any request encounters persistent 401
     const unsubscribe = subscribeToAuthFailure(() => {
+      clearStoredTokens();
       setUser(null);
       setIsAuthenticated(false);
     });
@@ -81,6 +84,7 @@ export const AuthProvider = ({ children }) => {
       }
       throw new Error('Invalid user payload received');
     } catch (err) {
+      clearStoredTokens();
       const errMsg = extractErrorMessage(err, 'Login failed');
       setError(errMsg);
       setIsAuthenticated(false);
@@ -98,11 +102,13 @@ export const AuthProvider = ({ children }) => {
       const data = await authApi.register({ email, password, role });
       const userData = data?.user || (data?.email ? data : null);
       if (userData) {
-        // Automatically login after successful registration
-        return await login({ email, password });
+        setUser(userData);
+        setIsAuthenticated(true);
+        return { success: true, user: userData };
       }
       return { success: true };
     } catch (err) {
+      clearStoredTokens();
       const errMsg = extractErrorMessage(err, 'Registration failed');
       setError(errMsg);
       return { success: false, error: errMsg };
@@ -118,6 +124,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       // Ignore logout network errors, proceed with local session clearing
     } finally {
+      clearStoredTokens();
       setUser(null);
       setIsAuthenticated(false);
       setIsLoading(false);

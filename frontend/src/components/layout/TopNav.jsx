@@ -1,7 +1,7 @@
 import React from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FileText, LogOut, User, SplitSquareVertical, FolderOpen, Menu, BarChart3, ShieldCheck } from 'lucide-react';
+import { FileText, LogOut, Menu } from 'lucide-react';
 
 export const TopNav = ({ isSidebarOpen = true, onToggleSidebar }) => {
   const { user, logout } = useAuth();
@@ -19,13 +19,13 @@ export const TopNav = ({ isSidebarOpen = true, onToggleSidebar }) => {
   return (
     <header className="h-14 border-b border-slate-200 bg-white px-3 sm:px-5 flex items-center justify-between select-none shadow-xs z-20">
       {/* Brand & Title */}
-      <div className="flex items-center space-x-2.5 sm:space-x-5 min-w-0">
+      <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
         {/* Navigation Open / Close Toggle Button */}
         {onToggleSidebar && (
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors focus:outline-none"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors focus:outline-none cursor-pointer"
             title={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             aria-label="Toggle navigation sidebar"
           >
@@ -46,67 +46,6 @@ export const TopNav = ({ isSidebarOpen = true, onToggleSidebar }) => {
             </span>
           </div>
         </div>
-
-        <div className="hidden md:block h-5 w-px bg-slate-200" />
-
-        {/* Navigation Tabs */}
-        <nav className="flex items-center space-x-1 sm:space-x-1.5 text-xs font-medium">
-          <NavLink
-            to="/documents"
-            className={({ isActive }) =>
-              `flex items-center space-x-1.5 px-3 py-1.5 rounded-md transition-colors ${
-                isActive
-                  ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`
-            }
-          >
-            <FolderOpen className="w-4 h-4" />
-            <span>Documents</span>
-          </NavLink>
-
-          <NavLink
-            to="/workspace"
-            className={({ isActive }) =>
-              `flex items-center space-x-1.5 px-3 py-1.5 rounded-md transition-colors ${
-                isActive
-                  ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`
-            }
-          >
-            <SplitSquareVertical className="w-4 h-4" />
-            <span>Split Viewer</span>
-          </NavLink>
-
-          <NavLink
-            to="/analytics"
-            className={({ isActive }) =>
-              `flex items-center space-x-1.5 px-3 py-1.5 rounded-md transition-colors ${
-                isActive
-                  ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`
-            }
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>User Analytics</span>
-          </NavLink>
-
-          <NavLink
-            to="/account"
-            className={({ isActive }) =>
-              `flex items-center space-x-1.5 px-3 py-1.5 rounded-md transition-colors ${
-                isActive
-                  ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200/60'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`
-            }
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>Account & Security</span>
-          </NavLink>
-        </nav>
       </div>
 
       {/* User Session & Profile Card Link */}
@@ -132,7 +71,7 @@ export const TopNav = ({ isSidebarOpen = true, onToggleSidebar }) => {
             <button
               onClick={logout}
               title="Sign out"
-              className="p-1.5 rounded-lg text-slate-500 hover:text-red-700 hover:bg-red-50 transition-colors"
+              className="p-1.5 rounded-lg text-slate-500 hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
               aria-label="Sign out"
             >
               <LogOut className="w-4 h-4" />
